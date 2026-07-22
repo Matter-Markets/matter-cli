@@ -6,7 +6,7 @@ This private repository contains the complete source for the `matter` and `matte
 
 ## Install a release
 
-Node.js 20 or newer and an authenticated GitHub CLI are required while this repository is private.
+Node.js 22 or newer and an authenticated GitHub CLI are required while this repository is private.
 
 ```sh
 mkdir matter-cli-release
