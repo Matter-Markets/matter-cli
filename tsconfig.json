@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "declaration": true,
+    "sourceMap": true,
+    "outDir": "dist",
+    "rootDir": "cli"
+  },
+  "include": ["cli/**/*.ts", "cli/**/*.tsx"],
+  "exclude": ["cli/**/*.test.ts", "cli/**/*.test.tsx", "cli/**/__snapshots__/**"]
+}

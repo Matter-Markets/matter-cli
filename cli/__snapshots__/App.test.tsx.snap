@@ -1,0 +1,98 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Matter session frame > renders an ASCII fallback with a persistent PAPERNET watermark 1`] = `
+"┌──────────────────────────────────────────────────────────────────────────────┐
+│ volt-runner · AGENT #0047 · * resident (last wake 32m ago)          PAPERNET │
+└──────────────────────────────────────────────────────────────────────────────┘
+ chat · latest activity                                    3–4 of 4 · PgUp/PgDn
+ + Read portfolio · Portfolio refreshed
+
+ ┌───────────────────────────────────────────────────────────────────────────┐
+ │ agent >                                                                   │
+ │ The position is within the current harness caps.                          │
+ └───────────────────────────────────────────────────────────────────────────┘
+
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ portfolio · harness                                                          │
+│ NVDA 41% · AAPL 22% · USDG 37%                                               │
+│ equity 549.99 · caps 21% used · live                                         │
+└──────────────────────────────────────────────────────────────────────────────┘
+ /portfolio /journal /wake /pause /clear /help /quit
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ >   Ask your resident anything, or type / for commands                       │
+│ ? shortcuts · ctrl+g editor                 enter send · shift+enter newline │
+└──────────────────────────────────────────────────────────────────────────────┘
+ /\\/\\ MATTER · attached session · /quit detaches"
+`;
+
+exports[`Matter session frame > renders the compact Unicode 80x24 golden frame without color 1`] = `
+"┌──────────────────────────────────────────────────────────────────────────────┐
+│ volt-runner · AGENT #0047 · ● resident (last wake 32m ago)          PAPERNET │
+└──────────────────────────────────────────────────────────────────────────────┘
+ chat · latest activity                                    3–4 of 4 · PgUp/PgDn
+ ✓ Read portfolio · Portfolio refreshed
+
+ ╭───────────────────────────────────────────────────────────────────────────╮
+ │ agent ›                                                                   │
+ │ The position is within the current harness caps.                          │
+ ╰───────────────────────────────────────────────────────────────────────────╯
+
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ portfolio · harness                                                          │
+│ NVDA 41% · AAPL 22% · USDG 37%                                               │
+│ equity 549.99 · caps 21% used · live                                         │
+└──────────────────────────────────────────────────────────────────────────────┘
+ /portfolio /journal /wake /pause /clear /help /quit
+╭──────────────────────────────────────────────────────────────────────────────╮
+│ ›   Ask your resident anything, or type / for commands                       │
+│ ? shortcuts · ctrl+g editor                 enter send · shift+enter newline │
+╰──────────────────────────────────────────────────────────────────────────────╯
+ ▲▲ MATTER · attached session · /quit detaches"
+`;
+
+exports[`Matter session frame > renders the wide Unicode 120x40 golden frame 1`] = `
+"┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ volt-runner · AGENT #0047 · ● resident (last wake 32m ago)                                        PAPERNET│
+└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+ chat · latest activity                                      1–4 of 4 · PgUp/PgDn ┌────────────────────────────────────┐
+ ╭─────────────────────────────────────────────────────────────────────────────╮  │ portfolio (live)│
+ │ system                                                                      │  │ NVDA 41% · AAPL 22% · USDG 37%│
+ │ volt-runner is resident on PAPERNET                                         │  │ equity 549.99 · epoch +1.80%│
+ ╰─────────────────────────────────────────────────────────────────────────────╯  │                 │
+                                                                                  │ harness         │
+           ╭────────────────────────────────────────────────────────────────────╮ │ ● live · caps 21% used│
+           │ you ›                                                              │ │ boundaries      │
+           │ why are we heavy NVDA?                                             │ │ 4 assets · 50/trade│
+           ╰────────────────────────────────────────────────────────────────────╯ │ 200/day         │
+                                                                                  │                 │
+ ✓ Read portfolio · Portfolio refreshed                                           │ last wake       │
+                                                                                  │ heartbeat · 2 tool calls│
+ ╭─────────────────────────────────────────────────────────────────────────────╮  │ 0 trades · status posted│
+ │ agent ›                                                                     │  │ 1 approval pending│
+ │ The position is within the current harness caps.                            │  │                 │
+ ╰─────────────────────────────────────────────────────────────────────────────╯  │                 │
+                                                                                  │                 │
+                                                                                  │                 │
+                                                                                  │                 │
+                                                                                  │                 │
+                                                                                  │                 │
+                                                                                  │                 │
+                                                                                  │                 │
+                                                                                  │                 │
+                                                                                  │                 │
+                                                                                  │                 │
+                                                                                  │                 │
+                                                                                  │                 │
+                                                                                  │                 │
+                                                                                  └────────────────────────────────────┘
+ /portfolio /journal /wake /pause /clear /help /quit
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ ›   Ask your resident anything, or type / for commands                                            │
+│ ? shortcuts · ctrl+g editor                                                         enter send · shift+enter newline│
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+ ▲▲ MATTER · attached session · /quit detaches"
+`;

@@ -1,0 +1,54 @@
+{
+  "name": "@matterhq/cli",
+  "version": "1.0.0",
+  "private": true,
+  "description": "The official command-line client and resident agent runtime for Matter.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Matter-Markets/matter-cli.git"
+  },
+  "homepage": "https://matter.markets",
+  "bugs": {
+    "url": "https://github.com/Matter-Markets/matter-cli/issues"
+  },
+  "type": "module",
+  "bin": {
+    "matter": "dist/index.js",
+    "matterd": "dist/matterd.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "npm run build && node dist/index.js",
+    "preview": "npm run build && node scripts/preview.mjs",
+    "test": "vitest run",
+    "test:update": "vitest run -u",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "release:check": "npm run typecheck && npm test && npm run build",
+    "prepack": "npm run release:check"
+  },
+  "dependencies": {
+    "commander": "14.0.3",
+    "ink": "6.8.0",
+    "pdf-parse": "^2.4.5",
+    "react": "19.2.8",
+    "smol-toml": "1.7.0",
+    "viem": "^2.55.5",
+    "zod": "4.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "@types/react": "19.2.7",
+    "ink-testing-library": "4.0.0",
+    "typescript": "5.9.3",
+    "vitest": "4.1.10"
+  }
+}
