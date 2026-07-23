@@ -1,5 +1,9 @@
 # Matter CLI
 
+<p align="center">
+  <img src="assets/matter.png" alt="Matter" width="420">
+</p>
+
 The official command-line client and resident agent runtime for [Matter](https://matter.markets).
 
 This private repository contains the complete source for the `matter` and `matterd` executables. It does not publish to the npm registry; release artifacts are distributed through this repository's GitHub Releases.
