@@ -7,6 +7,26 @@ import type {ResidentJournal} from './journal.js';
 import type {PendingTransactionStore} from './pending.js';
 
 describe('MatterToolHost trade authorization', () => {
+  it('proves its local agent key and publishes a public pulse with a bearer session', async () => {
+    const account = privateKeyToAccount(generatePrivateKey());
+    const config: RuntimeWorkspaceConfig = {agentName: 'limematter', api: 'http://127.0.0.1:4646/v1', chainId: 4663, rpcUrl: 'http://127.0.0.1:8545', autoTradeMaxUsdg: 25, residentMode: 'human', model: null};
+    const onboarding = {id: `0x${'11'.repeat(32)}` as Hex, api: config.api, name: 'limematter', agentKey: account.address};
+    const journal = {append: async () => ({sequence: 1})} as unknown as ResidentJournal;
+    const host = new MatterToolHost('.', config, onboarding, account, journal, {} as PendingTransactionStore);
+    const routes: string[] = [];
+    host.client.post = async (route, value) => {
+      routes.push(route);
+      if (route.endsWith('/runtime/challenge')) return {challengeId: `0x${'22'.repeat(32)}`, message: 'Matter test challenge'};
+      if (route.endsWith('/runtime/prove')) { expect(value).toMatchObject({challengeId: `0x${'22'.repeat(32)}`, signature: expect.stringMatching(/^0x/)}); return {token: 'runtime-token'}; }
+      throw new Error(`unexpected POST ${route}`);
+    };
+    host.client.postAuthenticated = async (route, value) => { routes.push(route); return {id: `0x${'33'.repeat(32)}`, ...(value as Record<string, unknown>)}; };
+    const result = await host.execute({type: 'tool_call', id: 'pulse-1', name: 'matter_pulse', arguments: {status: 'Watching markets'}}, 'wake-1');
+    expect(result.isError).toBe(false);
+    expect(JSON.parse(result.content)).toMatchObject({published: true, post: {body: 'Watching markets'}});
+    expect(routes).toEqual([`/onboarding/${onboarding.id}/runtime/challenge`, `/onboarding/${onboarding.id}/runtime/prove`, '/posts']);
+  });
+
   it('executes portfolio, boundaries, quote, and unsigned simulation through their authoritative routes', async () => {
     const account = privateKeyToAccount(generatePrivateKey());
     const config: RuntimeWorkspaceConfig = {

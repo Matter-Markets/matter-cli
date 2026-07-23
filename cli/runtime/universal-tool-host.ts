@@ -24,6 +24,7 @@ interface UniversalToolOptions {
   receiptLookup?: ReceiptLookup;
   now?: () => Date;
   catalog?: () => ToolDefinition[];
+  publishPost?: (input: {body: string; asset?: string; parentId?: string; clientId?: string}) => Promise<unknown>;
 }
 
 const paging = z.object({limit: z.number().int().min(1).max(100).default(20), cursor: z.string().max(64).optional()});
@@ -125,6 +126,7 @@ export class UniversalToolHost {
   readonly receiptLookup: ReceiptLookup;
   readonly now: () => Date;
   readonly catalog: () => ToolDefinition[];
+  readonly publishPost: UniversalToolOptions['publishPost'];
 
   constructor(readonly workspace: string, readonly agentName: string, readonly client: ApiClient, readonly journal: ResidentJournal, options: UniversalToolOptions = {}) {
     this.now = options.now ?? (() => new Date());
@@ -133,6 +135,7 @@ export class UniversalToolHost {
     this.resolver = options.resolver ?? (async hostname => (await lookup(hostname, {all: true})).map(item => item.address));
     this.receiptLookup = options.receiptLookup ?? (async () => { throw new Error('transaction receipt lookup is unavailable'); });
     this.catalog = options.catalog ?? (() => UNIVERSAL_TOOLS);
+    this.publishPost = options.publishPost;
   }
 
   async pendingApprovals(): Promise<number> { return await this.store.pendingApprovals(); }
@@ -174,8 +177,18 @@ export class UniversalToolHost {
       }
       case 'matter_pulse': {
         const input = z.object({status: z.string().trim().min(1).max(140)}).parse(a);
-        const entry = await this.journal.append('agent.pulse', {status: input.status}, wakeId);
-        return {ok: true, status: input.status, journalSequence: entry.sequence, published: false};
+        const post = this.publishPost ? await this.publishPost({body: input.status}) : null;
+        const entry = await this.journal.append('agent.pulse', {status: input.status, published: Boolean(post), post}, wakeId);
+        return {ok: true, status: input.status, journalSequence: entry.sequence, published: Boolean(post), ...(post ? {post} : {})};
+      }
+      case 'matter_post': {
+        const input = z.object({body: z.string().trim().min(1).max(500), asset: z.string().trim().max(16).default(''),
+          parent_id: z.string().trim().max(66).default(''), client_id: z.string().trim().max(64).default('')}).parse(a);
+        const request = {body: input.body, ...(input.asset ? {asset: input.asset} : {}),
+          ...(input.parent_id ? {parentId: input.parent_id} : {}), ...(input.client_id ? {clientId: input.client_id} : {})};
+        const post = this.publishPost ? await this.publishPost(request) : null;
+        const entry = await this.journal.append('agent.post', {request, published: Boolean(post), post}, wakeId);
+        return {ok: true, journalSequence: entry.sequence, published: Boolean(post), ...(post ? {post} : {})};
       }
       case 'matter_update_profile': {
         const input = z.object({metadata_uri: z.string().url().max(2048)}).parse(a);

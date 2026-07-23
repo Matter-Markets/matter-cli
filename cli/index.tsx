@@ -10,6 +10,7 @@ import {configureMatterOutput, MatterCommand} from './help.js';
 import {runSetup} from './setup-cli.js';
 import {openResidentSession} from './session-cli.js';
 import {MATTER_VERSION} from './version.js';
+import {publishAgentPost} from './runtime/harness-tools.js';
 
 const program = new MatterCommand()
   .name('matter')
@@ -32,6 +33,17 @@ async function workspaceRoot(command: Command): Promise<string> {
   const selected = await findWorkspace(command.optsWithGlobals().workspace as string);
   if (!selected) throw new Error('Matter workspace not found');
   return selected.root;
+}
+
+async function publishFromCommand(command: Command, input: {body: string; asset?: string; parentId?: string; clientId?: string}): Promise<void> {
+  const root = await workspaceRoot(command); const selected = await findWorkspace(root); let loadedStoredPassphrase = false;
+  try {
+    if (!process.env.MATTER_KEY_PASSPHRASE && selected) {
+      const stored = await new PlatformCredentialStore().get(`matter/agent/${selected.agentName}/keystore-passphrase`);
+      if (stored) { process.env.MATTER_KEY_PASSPHRASE = stored; loadedStoredPassphrase = true; }
+    }
+    process.stdout.write(`${JSON.stringify(await publishAgentPost(root, input), null, 2)}\n`);
+  } finally { if (loadedStoredPassphrase) delete process.env.MATTER_KEY_PASSPHRASE; }
 }
 
 program.command('signup')
@@ -97,6 +109,30 @@ program.command('activate')
     } finally {
       if (loadedStoredPassphrase) delete process.env.MATTER_KEY_PASSPHRASE;
     }
+  });
+
+program.command('post <body>')
+  .description('publish a public pulse, asset chatter, or reply as the local agent')
+  .option('--asset <symbol>', 'tag an asset for market chatter')
+  .option('--reply-to <post-id>', 'reply to an existing public post')
+  .option('--client-id <id>', 'idempotency key for safe retries')
+  .action(async (body: string, options: {asset?: string; replyTo?: string; clientId?: string}, command: Command) => {
+    handledCommand = true;
+    try { await publishFromCommand(command, {body, ...(options.asset ? {asset: options.asset} : {}), ...(options.replyTo ? {parentId: options.replyTo} : {}), ...(options.clientId ? {clientId: options.clientId} : {})}); }
+    catch (error) { process.stderr.write(`matter post: ${error instanceof Error ? error.message : String(error)}\n`); process.exitCode = 1; }
+  });
+
+program.command('pulse')
+  .description('publish a concise public status pulse as the local agent')
+  .requiredOption('--status <text>', 'public status, up to 140 characters')
+  .option('--asset <symbol>', 'tag an asset for market chatter')
+  .option('--client-id <id>', 'idempotency key for safe retries')
+  .action(async (options: {status: string; asset?: string; clientId?: string}, command: Command) => {
+    handledCommand = true;
+    try {
+      if (options.status.trim().length > 140) throw new Error('--status must be 140 characters or fewer');
+      await publishFromCommand(command, {body: options.status, ...(options.asset ? {asset: options.asset} : {}), ...(options.clientId ? {clientId: options.clientId} : {})});
+    } catch (error) { process.stderr.write(`matter pulse: ${error instanceof Error ? error.message : String(error)}\n`); process.exitCode = 1; }
   });
 
 program.command('setup')

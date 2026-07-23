@@ -21,17 +21,27 @@ async function json(response: Response): Promise<unknown> {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
     const value = payload as Record<string, unknown>;
-    throw new Error(typeof value.message === 'string' ? value.message : `Matter API returned HTTP ${response.status}`);
+    throw new MatterApiError(response.status, typeof value.message === 'string' ? value.message : `Matter API returned HTTP ${response.status}`);
   }
   return payload;
+}
+
+class MatterApiError extends Error {
+  constructor(readonly status: number, message: string) { super(message); this.name = 'MatterApiError'; }
 }
 
 function serialized(value: unknown): string { return JSON.stringify(value, (_key, item) => typeof item === 'bigint' ? item.toString() : item); }
 
 export class HarnessClient {
+  #authorization: string | null = null;
   constructor(readonly api: string, readonly timeoutMs = 30_000) {}
   async get(route: string): Promise<any> { return await this.#request(route, {method: 'GET'}); }
   async post(route: string, body: unknown): Promise<any> { return await this.#request(route, {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify(body)}); }
+  async postAuthenticated(route: string, body: unknown): Promise<any> {
+    if (!this.#authorization) throw new Error('Matter runtime session is not active');
+    return await this.#request(route, {method: 'POST', headers: {'content-type': 'application/json', authorization: `Bearer ${this.#authorization}`}, body: JSON.stringify(body)});
+  }
+  authorize(token: string | null): void { this.#authorization = token; }
   async #request(route: string, init: RequestInit): Promise<any> {
     const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), this.timeoutMs); timer.unref?.();
     try { return await json(await fetch(`${this.api}${route}`, {...init, signal: controller.signal})); }
@@ -41,11 +51,25 @@ export class HarnessClient {
 
 export const MATTER_TOOLS: ToolDefinition[] = [...CORE_TOOLS, ...UNIVERSAL_TOOLS];
 
+export async function publishAgentPost(workspace: string, value: {body: string; asset?: string; parentId?: string; clientId?: string}): Promise<unknown> {
+  const input = z.object({body: z.string().trim().min(1).max(500), asset: z.string().trim().max(16).optional(),
+    parentId: z.string().regex(/^0x[0-9a-fA-F]{64}$/).optional(), clientId: z.string().trim().regex(/^[A-Za-z0-9._:-]{1,64}$/).optional()}).parse(value);
+  const {onboarding, account} = await MatterToolHost.loadIdentity(workspace);
+  if (!account) throw new Error('agent key is locked; set MATTER_KEY_PASSPHRASE or configure the platform credential store');
+  const client = new HarnessClient(onboarding.api.replace(/\/$/, ''));
+  const challenge = await client.post(`/onboarding/${onboarding.id}/runtime/challenge`, {}) as {challengeId: Hex; message: string};
+  const signature = await account.signMessage({message: challenge.message});
+  const proof = await client.post(`/onboarding/${onboarding.id}/runtime/prove`, {challengeId: challenge.challengeId, signature}) as {token: string};
+  client.authorize(proof.token);
+  return await client.postAuthenticated('/posts', input);
+}
+
 export class MatterToolHost {
   readonly client: HarnessClient;
   readonly pending: PendingTransactionStore;
   readonly universal: UniversalToolHost;
   #catalog: AssetCatalog | null = null;
+  #runtimeToken: string | null = null;
 
   constructor(readonly workspace: string, readonly config: RuntimeWorkspaceConfig, readonly onboarding: OnboardingLocal, readonly account: PrivateKeyAccount | null,
     readonly journal: ResidentJournal, pending: PendingTransactionStore) {
@@ -54,6 +78,7 @@ export class MatterToolHost {
     this.universal = new UniversalToolHost(workspace, config.agentName, this.client, journal, {
       receiptLookup: async hash => await publicClient.getTransactionReceipt({hash}),
       catalog: () => MATTER_TOOLS,
+      publishPost: async input => await this.#publishPost(input),
     });
   }
 
@@ -103,6 +128,24 @@ export class MatterToolHost {
   }
 
   async pendingApprovalCount(): Promise<number> { return await this.universal.pendingApprovals(); }
+
+  async #activateRuntime(): Promise<void> {
+    if (!this.account) throw new Error('agent key is locked; restart matterd with MATTER_KEY_PASSPHRASE loaded');
+    const challenge = await this.client.post(`/onboarding/${this.onboarding.id}/runtime/challenge`, {}) as {challengeId: Hex; message: string};
+    const signature = await this.account.signMessage({message: challenge.message});
+    const proof = await this.client.post(`/onboarding/${this.onboarding.id}/runtime/prove`, {challengeId: challenge.challengeId, signature}) as {token: string};
+    this.#runtimeToken = proof.token; this.client.authorize(proof.token);
+  }
+
+  async #publishPost(input: {body: string; asset?: string; parentId?: string; clientId?: string}): Promise<unknown> {
+    if (!this.#runtimeToken) await this.#activateRuntime();
+    try { return await this.client.postAuthenticated('/posts', input); }
+    catch (error) {
+      if (!(error instanceof MatterApiError) || error.status !== 401) throw error;
+      this.#runtimeToken = null; this.client.authorize(null); await this.#activateRuntime();
+      return await this.client.postAuthenticated('/posts', input);
+    }
+  }
 
   async #catalogValue(): Promise<AssetCatalog> { return this.#catalog ??= await this.client.get('/assets') as AssetCatalog; }
   async #rawAmount(input: z.infer<typeof quoteInput>): Promise<string> {

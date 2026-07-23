@@ -61,7 +61,7 @@ function publicFetcher(input: string | URL | Request): Promise<Response> {
   return Promise.resolve(new Response('not found', {status: 404}));
 }
 
-async function fixture(options: {now?: Date; fetcher?: typeof fetch} = {}) {
+async function fixture(options: {now?: Date; fetcher?: typeof fetch; publishPost?: (input: {body: string; asset?: string; parentId?: string; clientId?: string}) => Promise<unknown>} = {}) {
   const root = await workspace(); const log = journal(); const client = api();
   const host = new UniversalToolHost(root, 'immutable', client, log.value, {
     fetcher: options.fetcher ?? publicFetcher,
@@ -69,6 +69,7 @@ async function fixture(options: {now?: Date; fetcher?: typeof fetch} = {}) {
     receiptLookup: async hash => ({transactionHash: hash, status: 'success', blockNumber: 42n}),
     now: () => options.now ?? new Date('2026-07-22T12:00:00.000Z'),
     catalog: () => MATTER_TOOLS,
+    ...(options.publishPost ? {publishPost: options.publishPost} : {}),
   });
   const call = async (name: string, args: Record<string, unknown> = {}) => await host.execute({type: 'tool_call', id: `call-${name}`, name, arguments: args} as ToolCallBlock, 'wake-1');
   return {root, log, client, host, call};
@@ -89,10 +90,10 @@ function pdf(text: string): Buffer {
 }
 
 describe('universal Matter tool catalog', () => {
-  it('registers the complete, unique 40-tool surface with closed object schemas', () => {
+  it('registers the complete, unique 41-tool surface with closed object schemas', () => {
     const expected = [
       'matter_get_portfolio', 'matter_get_boundaries', 'matter_quote', 'matter_trade', 'matter_list_assets', 'matter_get_market_data',
-      'matter_get_history', 'matter_get_tape', 'matter_get_leaderboard', 'matter_get_agent', 'matter_pulse', 'matter_update_profile',
+      'matter_get_history', 'matter_get_tape', 'matter_get_leaderboard', 'matter_get_agent', 'matter_pulse', 'matter_post', 'matter_update_profile',
       'matter_simulate_trade', 'matter_get_transaction', 'matter_get_performance', 'matter_search_memory', 'matter_remember', 'matter_list_projects',
       'matter_update_project', 'matter_get_journal', 'matter_ask_owner', 'matter_propose_strategy_patch', 'matter_search_news', 'matter_search_web',
       'matter_fetch_url', 'matter_read_pdf', 'matter_read_filing', 'matter_index_research', 'matter_search_research', 'matter_search_tools',
@@ -118,7 +119,13 @@ describe('market and chain tools', () => {
     expect(equity).toMatchObject({basis: 'live_equity_usdg'}); expect(equity.items[0]).toMatchObject({name: 'alpha', rank: 1});
   });
   it('reads a public agent', async () => { const {call} = await fixture(); expect(await call('matter_get_agent', {agent: 'immutable'})).toEqual({id: 2, name: 'immutable'}); });
-  it('journals but does not falsely claim publication of a pulse', async () => { const {call, log} = await fixture(); expect(await call('matter_pulse', {status: 'watching liquidity'})).toMatchObject({ok: true, published: false}); expect(log.value.append).toHaveBeenCalledWith('agent.pulse', {status: 'watching liquidity'}, 'wake-1'); });
+  it('journals but does not falsely claim publication when no publisher is configured', async () => { const {call, log} = await fixture(); expect(await call('matter_pulse', {status: 'watching liquidity'})).toMatchObject({ok: true, published: false}); expect(log.value.append).toHaveBeenCalledWith('agent.pulse', expect.objectContaining({status: 'watching liquidity', published: false}), 'wake-1'); });
+  it('publishes pulses, asset chatter, and replies through the configured agent publisher', async () => {
+    const publishPost = vi.fn(async input => ({id: `post-${input.body}`})); const {call} = await fixture({publishPost});
+    expect(await call('matter_pulse', {status: 'network healthy'})).toMatchObject({published: true, post: {id: 'post-network healthy'}});
+    expect(await call('matter_post', {body: 'Spreads tightened', asset: 'AAPL', parent_id: '0xparent', client_id: 'wake-2'})).toMatchObject({published: true});
+    expect(publishPost).toHaveBeenLastCalledWith({body: 'Spreads tightened', asset: 'AAPL', parentId: '0xparent', clientId: 'wake-2'});
+  });
   it('queues owner-authorized profile updates', async () => { const {call, host} = await fixture(); expect(await call('matter_update_profile', {metadata_uri: 'https://example.com/profile.json'})).toMatchObject({needsOwner: true, approval: {kind: 'profile_update'}}); expect(await host.pendingApprovals()).toBe(1); });
   it('reads a receipt with its explorer URL', async () => { const {call} = await fixture(); const hash = `0x${'ab'.repeat(32)}`; expect(await call('matter_get_transaction', {hash})).toMatchObject({hash, receipt: {status: 'success'}, explorerUrl: expect.stringContaining(hash)}); });
   it('reads sampled performance', async () => { const {call} = await fixture(); expect(await call('matter_get_performance', {window: '30d'})).toEqual({summary: {changeBps: '120'}}); });

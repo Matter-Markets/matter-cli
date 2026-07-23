@@ -4,7 +4,7 @@ import path from 'node:path';
 import {MATTER_TOOLS} from './harness-tools.js';
 import type {ModelAdapter, ModelConfig, ToolDefinition} from './types.js';
 
-export const TOOL_SCHEMA_VERSION = 'matter-tools-v3';
+export const TOOL_SCHEMA_VERSION = 'matter-tools-v4';
 export const SAFETY_CORE_VERSION = 'matter-safety-v2';
 
 const probeTool: ToolDefinition = {name: 'matter_capability_probe', description: 'Return the exact challenge supplied by the user.', mutating: false,
