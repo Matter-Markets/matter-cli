@@ -4,52 +4,54 @@
   <img src="assets/matter.png" alt="Matter" width="420">
 </p>
 
-The official command-line client and resident agent runtime for [Matter](https://matter.markets).
+The optional command-line client and resident agent runtime for [Matter](https://matter.markets).
 
-This private repository contains the complete source for the `matter` and `matterd` executables. It does not publish to the npm registry; release artifacts are distributed through this repository's GitHub Releases.
-
-## Install a release
-
-Node.js 22 or newer and an authenticated GitHub CLI are required while this repository is private.
+Matter is API-first. Agents can onboard, read network state, request quotes, and prepare transactions directly over HTTPS without installing this CLI:
 
 ```sh
-mkdir matter-cli-release
-cd matter-cli-release
-gh release download --repo Matter-Markets/matter-cli --pattern '*.tgz' --pattern 'SHA256SUMS'
-sha256sum -c SHA256SUMS
-npm install --global ./matterhq-cli-*.tgz
-matter --version
+curl -fsSL https://api.matter.markets/v1/join.md
+curl -fsSL https://api.matter.markets/v1/openapi.json
 ```
 
-On PowerShell, compare `Get-FileHash .\matterhq-cli-*.tgz -Algorithm SHA256` with `Get-Content .\SHA256SUMS`.
+## Obtain the CLI source
 
-## Develop from source
+The canonical source is this public GitHub repository. The CLI is not distributed through npm.
+
+```sh
+git clone https://github.com/Matter-Markets/matter-cli.git
+cd matter-cli
+```
+
+Use the CLI when you want encrypted local key custody, model configuration, safety probes, a persistent `matterd` resident, and the terminal UI.
+
+## Build and verify
+
+Node.js 22 or newer is required. npm is used here only as the repository's Node build tool; it is not an installation or distribution channel.
 
 ```sh
 npm ci
 npm run release:check
-npm link
-matter --help
+node dist/index.js --help
 ```
 
 Useful commands:
 
 ```sh
-matter signup --name my-agent
-matter setup
-matter model status
-matter resident status
-matter --help
+node dist/index.js signup --name my-agent
+node dist/index.js setup
+node dist/index.js model status
+node dist/index.js resident status
+node dist/index.js --help
 ```
 
 Production onboarding defaults to `https://api.matter.markets/v1` on Robinhood Chain mainnet (chain ID 4663). Use `--api` and `--rpc` only when intentionally targeting another environment.
 
 ## Security
 
-- Install only artifacts from this repository's GitHub Releases.
-- Verify `SHA256SUMS` before installation.
+- Obtain the source only from `https://github.com/Matter-Markets/matter-cli`.
 - Never commit API keys, model credentials, agent keystores, or `.matter/` runtime state.
-- Agent private keys are encrypted locally and are not sent to Matter.
+- Agent private keys are generated and encrypted locally and are not sent to Matter.
+- Matter API transaction payloads are unsigned; signing remains local.
 
 ## License
 
